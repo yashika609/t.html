@@ -1,0 +1,328 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>APK HUB</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .logo_container {
+      display: flex;
+      align-items: center;
+      gap: 2%;
+      padding: 10px;
+      flex-wrap: wrap;
+    }
+
+    .logo_container img {
+      width: 70px;
+      height: 70px;
+    }
+
+    .logo_text {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      font-family: Arial, sans-serif;
+    }
+
+    #games, #apps, #books, #children {
+      cursor: pointer;
+      padding: 10px;
+      color: black;
+      transition: color 0.3s ease;
+    }
+
+    #games.green,
+    #apps.green,
+    #books.green,
+    #children.green {
+      color: rgb(13, 180, 13);
+    }
+
+    .search_icon {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-left: auto;
+    }
+
+    .search_icon i,
+    .search_icon h4 {
+      cursor: pointer;
+    }
+
+    .app-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      padding: 20px;
+    }
+
+    .app-card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .app-card img {
+      width: 80px;
+      height: 80px;
+      border-radius: 20%;
+      margin-bottom: 10px;
+    }
+
+    .app-card h3 {
+      font-size: 16px;
+      margin: 5px 0;
+    }
+
+    .app-card p {
+      font-size: 14px;
+      color: #555;
+    }
+
+    .app-card a {
+      text-decoration: none;
+      color: #1a73e8;
+      font-size: 14px;
+    }
+
+    #container {
+      padding: 20px;
+    }
+
+    #userInfo {
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #userInfo img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo_container">
+    <img src="./image/tl.webp" alt="Logo" />
+    <div class="logo_text">APK HUB</div>
+
+    <div id="games">Games</div>
+    <div id="apps">Apps</div>
+    <div id="books">Books</div>
+    
+
+    <div class="search_icon">
+    <input type="text" id="searchInput" placeholder="Search apps..." style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+
+  
+      <i class="fa-regular fa-bell icon"></i>
+      <div id="g_id_signin"></div>
+      <div id="userInfo"></div>
+    </div>
+  </div>
+  
+
+
+  <div id="container"></div>
+
+  <script>
+    // GOOGLE SIGN-IN
+    const CLIENT_ID = '339976315427-5p7psnvhmu887v302364qkcijbu16613.apps.googleusercontent.com'; // <-- Replace this!
+
+    window.onload = function () {
+      google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: handleCredentialResponse
+
+      });
+
+      google.accounts.id.renderButton(
+        document.getElementById("g_id_signin"),
+        { theme: "outline", size: "small" }
+      );
+
+      google.accounts.id.prompt(); // optional
+    };
+
+    function handleCredentialResponse(response) {
+      const decoded = parseJwt(response.credential);
+      const name = decoded.name;
+      const email = decoded.email;
+      const picture = decoded.picture;
+
+      document.getElementById('g_id_signin').style.display = 'none';
+      const userDiv = document.getElementById('userInfo');
+      userDiv.style.display = 'flex';
+      userDiv.innerHTML = `
+        <img src="${picture}" alt="User">
+        <span>${name}</span>
+      `;
+
+      localStorage.setItem("user", JSON.stringify({ name, email, picture }));
+    }
+
+    function parseJwt(token) {
+      const base64Url = token.split('.')[1];
+      const base64 = decodeURIComponent(atob(base64Url).split('').map(c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join(''));
+      return JSON.parse(base64);
+    }
+    
+
+    const savedUser = JSON.parse(localStorage.getItem('user'));
+    if (savedUser) {
+      document.getElementById('g_id_signin').style.display = 'none';
+      const userDiv = document.getElementById('userInfo');
+      userDiv.style.display = 'flex';
+      userDiv.innerHTML = `
+        <img src="${savedUser.picture}" alt="User">
+        <span>${savedUser.name}</span>
+      `;
+    }
+     
+    
+  </script>
+
+  <script>
+    const apiKey = 'cb6a7b6f49mshc6c90346adaef3bp1afa5cjsn6d84ef0791da';
+    const host = 'google-play-api-detailed.p.rapidapi.com';
+
+    
+async function fetchAndDisplayData(type) {
+  let category, dataKey, containerId;
+  
+  if (type === 'games') {
+    category = 'GAME';
+    dataKey = 'GamesData';
+    containerId = 'gameData';
+  } else if (type === 'apps') {
+    category = 'APPLICATION';
+    dataKey = 'AppsData';
+    containerId = 'appsData';
+  } else if (type === 'books') {
+    category = 'BOOKS_AND_REFERENCE';
+    dataKey = 'BooksData';
+    containerId = 'booksData';
+  }
+  
+  const container = document.getElementById('container');
+  container.innerHTML = `<div id="${containerId}" class="app-container"></div>`;
+  const appContainer = document.getElementById(containerId);
+  
+  // Rest of the function remains the same
+  const savedData = localStorage.getItem(dataKey);
+  if (savedData) {
+    displayApps(JSON.parse(savedData), appContainer);
+  } else {
+    const url = `https://${host}/apps_from_category?category=${category}&num=25&collections=TOP_FREE&lang=en&country=us&age=FIVE_UNDER`;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-rapidapi-key': apiKey,
+          'x-rapidapi-host': host
+        }
+      });
+      const data = await response.json();
+      localStorage.setItem(dataKey, JSON.stringify(data));
+      displayApps(data, appContainer);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      appContainer.innerHTML = '<p>Error loading data</p>';
+    }
+  }
+}
+
+    function displayApps(apps, container) {
+      container.innerHTML = '';
+      apps.forEach(app => {
+        const card = document.createElement("div");
+        card.className = "app-card";
+        card.innerHTML = `
+          <img src="${app.icon}" alt="${app.title}">
+          <h3>${app.title}</h3>
+          <p>⭐ ${app.scoreText || "N/A"}</p>
+          <a href="https://play.google.com/store/apps/details?id=${app.appId}" target="_blank">
+            View on Play Store
+          </a>`;
+        container.appendChild(card);
+      });
+    }
+
+    function resetColors() {
+      ['games', 'apps', 'books', ].forEach(id => {
+        document.getElementById(id).classList.remove('green');
+      });
+    }
+
+    document.getElementById('games').addEventListener('click', () => {
+      resetColors();
+      document.getElementById('games').classList.add('green');
+      fetchAndDisplayData('games');
+    });
+
+    document.getElementById('apps').addEventListener('click', () => {
+      resetColors();
+      document.getElementById('apps').classList.add('green');
+      fetchAndDisplayData('apps');
+    });
+
+    // Add this after the apps event listener
+document.getElementById('books').addEventListener('click', () => {
+  resetColors();
+  document.getElementById('books').classList.add('green');
+  fetchAndDisplayData('books');
+});
+
+    // Default load
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('games').click();
+    });
+    document.getElementById('searchButton').addEventListener('click', () => {
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  const filteredApps = lastFetchedData.filter(app =>
+    app.title.toLowerCase().includes(searchTerm)
+  );
+
+
+  
+});
+
+
+  </script>
+
+</body>
+</html>
+
+
+
+
+
+
